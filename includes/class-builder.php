@@ -91,12 +91,26 @@ class WPForms_Legal_Footer_Builder
         // --- Data Preparation ---
         $pages = get_pages();
         $page_options = array('' => esc_html__('Select a Page', 'wpforms-legal-footer'));
+
+        // Defaults auto-detection
+        $privacy_page_id = '';
+        $terms_page_id = '';
+
         foreach ($pages as $page) {
             $page_options[$page->ID] = $page->post_title;
+
+            // Simple text matching for auto-detection
+            $title = strtolower($page->post_title);
+            if (empty($privacy_page_id) && (strpos($title, 'privacy') !== false)) {
+                $privacy_page_id = $page->ID;
+            }
+            if (empty($terms_page_id) && (strpos($title, 'terms') !== false || strpos($title, 'conditions') !== false)) {
+                $terms_page_id = $page->ID;
+            }
         }
 
         // Helper function for rendering a link block.
-        $render_link_block = function ($id, $label) use ($instance, $page_options) {
+        $render_link_block = function ($id, $label, $defaults = array ()) use ($instance, $page_options) {
             echo '<div class="wpforms-legal-footer-block">';
             echo '<h4>' . esc_html($label) . '</h4>';
 
@@ -107,7 +121,10 @@ class WPForms_Legal_Footer_Builder
                 "legal_footer_{$id}_label",
                 $instance->form_data,
                 esc_html__('Label Text', 'wpforms-legal-footer'),
-                array('placeholder' => esc_html__('e.g. Privacy Policy', 'wpforms-legal-footer'))
+                array(
+                    'placeholder' => esc_html__('e.g. Privacy Policy', 'wpforms-legal-footer'),
+                    'default' => isset($defaults['label']) ? $defaults['label'] : '',
+                )
             );
 
             // Link Type Selector
@@ -124,6 +141,7 @@ class WPForms_Legal_Footer_Builder
                     ),
                     'class' => 'wpforms-legal-footer-link-type',
                     'data' => array('target' => "legal_footer_{$id}"),
+                    'default' => isset($defaults['type']) ? $defaults['type'] : 'custom',
                 )
             );
 
@@ -147,17 +165,28 @@ class WPForms_Legal_Footer_Builder
                 "legal_footer_{$id}_page",
                 $instance->form_data,
                 esc_html__('Select Page', 'wpforms-legal-footer'),
-                array('options' => $page_options)
+                array(
+                    'options' => $page_options,
+                    'default' => isset($defaults['page']) ? $defaults['page'] : '',
+                )
             );
             echo '</div>';
             echo '</div>';
         };
 
-        // Render Link 1
-        $render_link_block('link1', 'Primary Link (Left)');
+        // Render Link 1 (Privacy Policy Default)
+        $render_link_block('link1', 'Primary Link (Left)', array(
+            'label' => 'Privacy Policy',
+            'type' => !empty($privacy_page_id) ? 'page' : 'custom',
+            'page' => $privacy_page_id,
+        ));
 
-        // Render Link 2
-        $render_link_block('link2', 'Secondary Link (Right)');
+        // Render Link 2 (Terms Default)
+        $render_link_block('link2', 'Secondary Link (Right)', array(
+            'label' => 'Terms and Conditions',
+            'type' => !empty($terms_page_id) ? 'page' : 'custom',
+            'page' => $terms_page_id,
+        ));
 
         // --- Visual Styles ---
         echo '<div class="wpforms-legal-footer-block">';
