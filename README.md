@@ -46,7 +46,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 👨‍💻 Author
 
 **Omar Faruk**  
-*Expert Web Developer*
+*Chief Coffee Consumer ☕*
 
 - 🌐 [Portfolio](https://omarfaruk.dev/)
 - 🐙 [GitHub](https://github.com/iamOmarFaruk)
