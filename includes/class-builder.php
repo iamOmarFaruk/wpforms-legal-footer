@@ -23,6 +23,30 @@ class WPForms_Legal_Footer_Builder
         // Hook into the Settings tab of the Form Builder.
         add_filter('wpforms_builder_settings_sections', array($this, 'register_settings_section'), 20, 2);
         add_action('wpforms_form_settings_panel_content', array($this, 'output_settings_content'), 20, 1);
+        add_action('wpforms_builder_enqueues', array($this, 'enqueue_assets'));
+    }
+
+    /**
+     * Enqueue assets for the builder.
+     * 
+     * @since 1.0.0
+     */
+    public function enqueue_assets()
+    {
+        wp_enqueue_script(
+            'wpforms-legal-footer-builder',
+            WPFORMS_LEGAL_FOOTER_URL . 'assets/js/admin-builder.js',
+            array('jquery'),
+            WPFORMS_LEGAL_FOOTER_VERSION,
+            true
+        );
+
+        wp_enqueue_style(
+            'wpforms-legal-footer-builder',
+            WPFORMS_LEGAL_FOOTER_URL . 'assets/css/admin-builder.css',
+            array(),
+            WPFORMS_LEGAL_FOOTER_VERSION
+        );
     }
 
     /**
@@ -61,43 +85,104 @@ class WPForms_Legal_Footer_Builder
             esc_html__('Enable Legal Footer', 'wpforms-legal-footer')
         );
 
-        // Link Text.
-        wpforms_panel_field(
-            'text',
-            'settings',
-            'legal_footer_text',
-            $instance->form_data,
-            esc_html__('Link Text', 'wpforms-legal-footer'),
-            array(
-                'default' => esc_html__('Terms and Conditions', 'wpforms-legal-footer'),
-            )
-        );
+        // Container for conditional visibility.
+        echo '<div class="wpforms-legal-footer-settings-content">';
 
-        // Link URL.
-        wpforms_panel_field(
-            'text',
-            'settings',
-            'legal_footer_url',
-            $instance->form_data,
-            esc_html__('Link URL', 'wpforms-legal-footer'),
-            array(
-                'placeholder' => 'https://example.com/terms',
-            )
-        );
+        // --- Data Preparation ---
+        $pages = get_pages();
+        $page_options = array('' => esc_html__('Select a Page', 'wpforms-legal-footer'));
+        foreach ($pages as $page) {
+            $page_options[$page->ID] = $page->post_title;
+        }
 
-        // Open in New Tab.
+        // Helper function for rendering a link block.
+        $render_link_block = function ($id, $label) use ($instance, $page_options) {
+            echo '<div class="wpforms-legal-footer-block">';
+            echo '<h4>' . esc_html($label) . '</h4>';
+
+            // Link Label
+            wpforms_panel_field(
+                'text',
+                'settings',
+                "legal_footer_{$id}_label",
+                $instance->form_data,
+                esc_html__('Label Text', 'wpforms-legal-footer'),
+                array('placeholder' => esc_html__('e.g. Privacy Policy', 'wpforms-legal-footer'))
+            );
+
+            // Link Type Selector
+            wpforms_panel_field(
+                'select',
+                'settings',
+                "legal_footer_{$id}_type",
+                $instance->form_data,
+                esc_html__('Link Type', 'wpforms-legal-footer'),
+                array(
+                    'options' => array(
+                        'custom' => esc_html__('Custom URL', 'wpforms-legal-footer'),
+                        'page' => esc_html__('WordPress Page', 'wpforms-legal-footer'),
+                    ),
+                    'class' => 'wpforms-legal-footer-link-type',
+                    'data' => array('target' => "legal_footer_{$id}"),
+                )
+            );
+
+            // Custom URL Input
+            echo '<div class="wpforms-legal-footer-input-custom" id="wpforms-legal-footer-' . esc_attr($id) . '-custom">';
+            wpforms_panel_field(
+                'text',
+                'settings',
+                "legal_footer_{$id}_url",
+                $instance->form_data,
+                esc_html__('External URL', 'wpforms-legal-footer'),
+                array('placeholder' => 'https://...')
+            );
+            echo '</div>';
+
+            // Page Selector
+            echo '<div class="wpforms-legal-footer-input-page" id="wpforms-legal-footer-' . esc_attr($id) . '-page" style="display:none;">';
+            wpforms_panel_field(
+                'select',
+                'settings',
+                "legal_footer_{$id}_page",
+                $instance->form_data,
+                esc_html__('Select Page', 'wpforms-legal-footer'),
+                array('options' => $page_options)
+            );
+            echo '</div>';
+            echo '</div>';
+        };
+
+        // Render Link 1
+        $render_link_block('link1', 'Primary Link (Left)');
+
+        // Render Link 2
+        $render_link_block('link2', 'Secondary Link (Right)');
+
+        // --- Visual Styles ---
+        echo '<div class="wpforms-legal-footer-block">';
+        echo '<h3>' . esc_html__('Visual Appearance', 'wpforms-legal-footer') . '</h3>';
+
+        // Open in New Tab
         wpforms_panel_field(
             'checkbox',
             'settings',
             'legal_footer_target',
             $instance->form_data,
-            esc_html__('Open in New Tab', 'wpforms-legal-footer')
+            esc_html__('Open Links in New Tab', 'wpforms-legal-footer')
         );
 
-        // Visual Styles Heading.
-        echo '<h3>' . esc_html__('Visual Styles', 'wpforms-legal-footer') . '</h3>';
+        // Bold Text
+        wpforms_panel_field(
+            'checkbox',
+            'settings',
+            'legal_footer_bold',
+            $instance->form_data,
+            esc_html__('Bold Text', 'wpforms-legal-footer'),
+            array('default' => '1') // Checked by default
+        );
 
-        // Text Color.
+        // Text Color
         wpforms_panel_field(
             'color',
             'settings',
@@ -115,7 +200,7 @@ class WPForms_Legal_Footer_Builder
             esc_html__('Font Size (px)', 'wpforms-legal-footer'),
             array(
                 'type' => 'number',
-                'default' => '14',
+                'default' => '12',
             )
         );
 
@@ -135,7 +220,9 @@ class WPForms_Legal_Footer_Builder
                 'default' => 'left',
             )
         );
+        echo '</div>'; // End visual block
 
-        echo '</div>';
+        echo '</div>'; // End conditional container
+        echo '</div>'; // End section
     }
 }
